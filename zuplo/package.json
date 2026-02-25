@@ -1,0 +1,31 @@
+{
+  "name": "zuplo-x402-policy",
+  "version": "1.0.0",
+  "description": "Zuplo inbound policy that gates API requests behind x402 micropayments",
+  "main": "dist/policy.js",
+  "types": "dist/policy.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "zuplo",
+    "x402",
+    "payments",
+    "policy",
+    "web3",
+    "micropayments"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@zuplo/runtime": "^6.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  },
+  "peerDependencies": {
+    "@zuplo/runtime": ">=6.0.0"
+  }
+}

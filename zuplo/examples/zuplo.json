@@ -1,0 +1,41 @@
+{
+  "$schema": "https://cdn.zuplo.com/schemas/zuplo-config.json",
+
+  "routes": [
+    {
+      "label": "AI Agent Data API",
+      "path": "/v1/data/:resource",
+      "methods": ["GET", "POST"],
+      "handler": {
+        "module": "$import(@zuplo/runtime)",
+        "export": "urlForwardHandler",
+        "options": {
+          "baseUrl": "https://your-backend.example.com"
+        }
+      },
+      "policies": {
+        "inbound": [
+          {
+            "name": "x402-payment-gate",
+            "policyType": "custom-code-inbound",
+            "handler": {
+              "module": "$import(./modules/zuplo-x402-policy)",
+              "export": "default"
+            },
+            "options": {
+              "facilitatorUrl": "https://facilitator.stablecoin.xyz",
+              "payTo": "0xYourMerchantWalletAddress",
+              "network": "eip155:8453",
+              "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+              "maxAmountRequired": "1000000",
+              "description": "Access to AI Agent Data API — 1 USDC per request",
+              "maxTimeoutSeconds": 300,
+              "tokenName": "USD Coin",
+              "tokenVersion": "2"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
