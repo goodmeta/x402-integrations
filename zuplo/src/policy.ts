@@ -70,6 +70,8 @@ interface PaymentRequirements {
   scheme: string;
   network: string;
   maxAmountRequired: string;
+  /** SBC facilitator reads `amount` instead of `maxAmountRequired`. Include both for compatibility. */
+  amount: string;
   resource: string;
   description?: string;
   mimeType: string;
@@ -240,6 +242,7 @@ function buildPaymentRequirements(
     scheme: "exact",
     network: options.network,
     maxAmountRequired: options.maxAmountRequired,
+    amount: options.maxAmountRequired,
     resource: request.url,
     description: options.description ?? "Access to this API endpoint",
     mimeType: "application/json",

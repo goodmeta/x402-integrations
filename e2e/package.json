@@ -1,0 +1,12 @@
+{
+  "name": "x402-e2e-test",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx test-permit.ts"
+  },
+  "dependencies": {
+    "viem": "^2.0.0",
+    "tsx": "^4.0.0"
+  }
+}
