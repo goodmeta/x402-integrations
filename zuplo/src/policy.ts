@@ -1,8 +1,14 @@
 /**
- * zuplo-x402-policy
+ * zuplo-x402-policy (v2)
  *
  * An inbound Zuplo policy that gates API requests behind x402 micropayments.
- * Compliant with the x402 payment protocol specification.
+ * Compatible with x402 v2 facilitators (SBC, Coinbase).
+ *
+ * v2 changes from v1:
+ * - Reads PAYMENT-SIGNATURE header (v2) with X-PAYMENT fallback (v1)
+ * - Returns x402Version: 2 in 402 response
+ * - Sets PAYMENT-REQUIRED header (base64-encoded requirements)
+ * - Payment payload uses `accepted` envelope with scheme + network
  *
  * Runs on Cloudflare Workers — no Node.js built-ins used.
  */
@@ -43,13 +49,39 @@ export interface X402PolicyOptions {
 
   /** Token version for EIP-712 domain. Default: "1" */
   tokenVersion?: string;
+
+  /** Facilitator contract address for EIP-712 domain (optional) */
+  facilitatorAddress?: string;
+
+  /** Whether to settle payment on-chain after verification. Default: true */
+  settle?: boolean;
 }
 
 /**
- * The decoded payload extracted from the X-PAYMENT header.
- * Structure defined by the x402 spec — passed as-is to the facilitator.
+ * The decoded payload from the PAYMENT-SIGNATURE / X-PAYMENT header.
+ * x402 v2 format: { x402Version, accepted: { scheme, network }, payload, ... }
  */
 type PaymentPayload = Record<string, unknown>;
+
+/**
+ * Payment requirements sent in the 402 response and to the facilitator.
+ */
+interface PaymentRequirements {
+  scheme: string;
+  network: string;
+  maxAmountRequired: string;
+  resource: string;
+  description?: string;
+  mimeType: string;
+  payTo: string;
+  maxTimeoutSeconds: number;
+  asset: string;
+  facilitator?: string;
+  extra: {
+    name: string;
+    version: string;
+  };
+}
 
 /**
  * Response from the facilitator's /verify endpoint.
@@ -58,6 +90,17 @@ interface VerifyResponse {
   isValid: boolean;
   payer: string | null;
   invalidReason: string | null;
+}
+
+/**
+ * Response from the facilitator's /settle endpoint.
+ */
+interface SettleResponse {
+  success: boolean;
+  txHash?: string;
+  transaction?: string;
+  error?: string;
+  errorReason?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,17 +114,18 @@ export default async function policy(
   policyName: string
 ): Promise<ZuploRequest | Response> {
 
-  // Build the payment requirements object once — used in both the 402 response
-  // and the facilitator verify call.
+  const settle = options.settle ?? true;
   const paymentRequirements = buildPaymentRequirements(request, options);
 
   // ------------------------------------------------------------------
-  // Step 1: Check for the X-PAYMENT header
+  // Step 1: Check for payment header (v2: PAYMENT-SIGNATURE, v1: X-PAYMENT)
   // ------------------------------------------------------------------
-  const paymentHeader = request.headers.get("X-PAYMENT");
+  const paymentHeader =
+    request.headers.get("PAYMENT-SIGNATURE") ??
+    request.headers.get("X-PAYMENT");
 
   if (!paymentHeader) {
-    context.log.info(`[${policyName}] No X-PAYMENT header — returning 402`);
+    context.log.info(`[${policyName}] No payment header — returning 402`);
     return paymentRequiredResponse(paymentRequirements);
   }
 
@@ -91,16 +135,10 @@ export default async function policy(
   let paymentPayload: PaymentPayload;
 
   try {
-    paymentPayload = decodePaymentHeader(paymentHeader);
+    paymentPayload = decodeBase64Json(paymentHeader);
   } catch (err) {
-    context.log.warn(`[${policyName}] Failed to decode X-PAYMENT header: ${err}`);
-    return new Response(
-      JSON.stringify({ error: "X-PAYMENT header is not valid base64-encoded JSON" }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    context.log.warn(`[${policyName}] Failed to decode payment header: ${err}`);
+    return paymentRequiredResponse(paymentRequirements, "Invalid payment header");
   }
 
   // ------------------------------------------------------------------
@@ -109,13 +147,13 @@ export default async function policy(
   let verification: VerifyResponse;
 
   try {
-    verification = await verifyPayment(
+    verification = await facilitatorVerify(
       options.facilitatorUrl,
       paymentPayload,
       paymentRequirements
     );
   } catch (err) {
-    context.log.error(`[${policyName}] Facilitator request failed: ${err}`);
+    context.log.error(`[${policyName}] Facilitator verify failed: ${err}`);
     return new Response(
       JSON.stringify({ error: "Payment verification service unavailable" }),
       {
@@ -125,9 +163,6 @@ export default async function policy(
     );
   }
 
-  // ------------------------------------------------------------------
-  // Step 4: Allow or reject based on verification result
-  // ------------------------------------------------------------------
   if (!verification.isValid) {
     context.log.warn(
       `[${policyName}] Payment invalid — reason: ${verification.invalidReason}`
@@ -146,10 +181,46 @@ export default async function policy(
 
   context.log.info(`[${policyName}] Payment verified — payer: ${verification.payer}`);
 
-  // Note: Zuplo doesn't support mutating request headers directly; the payer
-  // address is available in logs. For downstream access, use a custom header
-  // set via a separate inbound policy or pass via context.custom.
-  // See README for the recommended pattern.
+  // ------------------------------------------------------------------
+  // Step 4: Settle on-chain (optional, default: true)
+  // ------------------------------------------------------------------
+  if (settle) {
+    let settlement: SettleResponse;
+
+    try {
+      settlement = await facilitatorSettle(
+        options.facilitatorUrl,
+        paymentPayload,
+        paymentRequirements
+      );
+    } catch (err) {
+      context.log.error(`[${policyName}] Facilitator settle failed: ${err}`);
+      return new Response(
+        JSON.stringify({ error: "Payment settlement service unavailable" }),
+        {
+          status: 502,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!settlement.success) {
+      context.log.warn(`[${policyName}] Settlement failed: ${settlement.error ?? settlement.errorReason}`);
+      return new Response(
+        JSON.stringify({
+          error: "Payment settlement failed",
+          reason: settlement.error ?? settlement.errorReason ?? "Unknown reason",
+        }),
+        {
+          status: 402,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const txHash = settlement.txHash ?? settlement.transaction;
+    context.log.info(`[${policyName}] Payment settled — tx: ${txHash}`);
+  }
 
   return request; // pass through to the backend
 }
@@ -160,12 +231,11 @@ export default async function policy(
 
 /**
  * Constructs the paymentRequirements object for this route.
- * Used in both the 402 body and the facilitator verify call.
  */
 function buildPaymentRequirements(
   request: ZuploRequest,
   options: X402PolicyOptions
-) {
+): PaymentRequirements {
   return {
     scheme: "exact",
     network: options.network,
@@ -176,6 +246,7 @@ function buildPaymentRequirements(
     payTo: options.payTo,
     maxTimeoutSeconds: options.maxTimeoutSeconds ?? 300,
     asset: options.asset,
+    facilitator: options.facilitatorAddress,
     extra: {
       name: options.tokenName ?? "Stable Coin",
       version: options.tokenVersion ?? "1",
@@ -184,44 +255,49 @@ function buildPaymentRequirements(
 }
 
 /**
- * Returns an HTTP 402 response in the x402 spec format.
+ * Returns an HTTP 402 response in the x402 v2 spec format.
+ *
+ * v2 additions:
+ * - PAYMENT-REQUIRED header with base64-encoded requirements
+ * - x402Version: 2
  */
 function paymentRequiredResponse(
-  paymentRequirements: ReturnType<typeof buildPaymentRequirements>
+  paymentRequirements: PaymentRequirements,
+  errorMessage?: string
 ): Response {
   const body = {
-    x402Version: 1,
-    error: "Payment Required",
+    x402Version: 2,
     accepts: [paymentRequirements],
+    ...(errorMessage ? { error: errorMessage } : { error: "Payment Required" }),
   };
+
+  const paymentRequiredHeader = btoa(JSON.stringify(body));
 
   return new Response(JSON.stringify(body), {
     status: 402,
     headers: {
       "Content-Type": "application/json",
-      // Hint to clients that x402 is in use
-      "X-Payment-Version": "1",
+      "PAYMENT-REQUIRED": paymentRequiredHeader,
     },
   });
 }
 
 /**
- * Decodes the X-PAYMENT header value from base64-encoded JSON.
+ * Decodes a base64-encoded JSON string.
  */
-function decodePaymentHeader(headerValue: string): PaymentPayload {
-  // atob is available in both browsers and Cloudflare Workers
-  const jsonString = atob(headerValue);
+function decodeBase64Json(value: string): PaymentPayload {
+  const jsonString = atob(value);
   return JSON.parse(jsonString) as PaymentPayload;
 }
 
 /**
  * Calls the facilitator's /verify endpoint.
- * Throws on network errors or non-2xx responses.
+ * Sends { paymentPayload, paymentRequirements } as raw JSON.
  */
-async function verifyPayment(
+async function facilitatorVerify(
   facilitatorUrl: string,
   paymentPayload: PaymentPayload,
-  paymentRequirements: ReturnType<typeof buildPaymentRequirements>
+  paymentRequirements: PaymentRequirements
 ): Promise<VerifyResponse> {
   const url = `${facilitatorUrl.replace(/\/$/, "")}/verify`;
 
@@ -237,4 +313,29 @@ async function verifyPayment(
   }
 
   return response.json() as Promise<VerifyResponse>;
+}
+
+/**
+ * Calls the facilitator's /settle endpoint.
+ * Triggers on-chain transfer of funds after verification.
+ */
+async function facilitatorSettle(
+  facilitatorUrl: string,
+  paymentPayload: PaymentPayload,
+  paymentRequirements: PaymentRequirements
+): Promise<SettleResponse> {
+  const url = `${facilitatorUrl.replace(/\/$/, "")}/settle`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ paymentPayload, paymentRequirements }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "(no body)");
+    throw new Error(`Facilitator returned ${response.status}: ${text}`);
+  }
+
+  return response.json() as Promise<SettleResponse>;
 }

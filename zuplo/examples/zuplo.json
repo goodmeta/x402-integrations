@@ -31,7 +31,8 @@
               "description": "Access to AI Agent Data API — 1 USDC per request",
               "maxTimeoutSeconds": 300,
               "tokenName": "USD Coin",
-              "tokenVersion": "2"
+              "tokenVersion": "2",
+              "settle": true
             }
           }
         ]
