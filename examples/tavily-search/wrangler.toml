@@ -4,7 +4,7 @@ compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
-FACILITATOR_URL = "https://facilitator.stablecoin.xyz"
+FACILITATOR_URL = "https://x402.stablecoin.xyz"
 AMOUNT_REQUIRED = "1000"
 
 # Set these as secrets, not vars:

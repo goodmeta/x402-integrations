@@ -42,7 +42,7 @@ function makeContext() {
 }
 
 const defaultOptions: X402PolicyOptions = {
-  facilitatorUrl: "https://facilitator.stablecoin.xyz",
+  facilitatorUrl: "https://x402.stablecoin.xyz",
   payTo: "0xMerchantWallet",
   network: "eip155:8453",
   asset: "0xUSDCTokenAddress",
@@ -170,7 +170,7 @@ describe("x402 Zuplo Policy", () => {
 
       expect(fetchMock).toHaveBeenCalledOnce();
       const [url, init] = fetchMock.mock.calls[0];
-      expect(url).toBe("https://facilitator.stablecoin.xyz/verify");
+      expect(url).toBe("https://x402.stablecoin.xyz/verify");
       expect(init.method).toBe("POST");
 
       const sentBody = JSON.parse(init.body as string);
@@ -256,7 +256,7 @@ describe("x402 Zuplo Policy", () => {
   describe("optional fields default correctly", () => {
     it("applies default description, timeout, and token metadata when omitted", async () => {
       const minimalOptions: X402PolicyOptions = {
-        facilitatorUrl: "https://facilitator.stablecoin.xyz",
+        facilitatorUrl: "https://x402.stablecoin.xyz",
         payTo: "0xWallet",
         network: "eip155:8453",
         asset: "0xToken",

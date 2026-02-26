@@ -17,7 +17,7 @@ import { ZuploContext, ZuploRequest } from "@zuplo/runtime";
  * Per-route configuration, set in zuplo.json under `options`.
  */
 export interface X402PolicyOptions {
-  /** Base URL of the x402 facilitator, e.g. "https://facilitator.stablecoin.xyz" */
+  /** Base URL of the x402 facilitator, e.g. "https://x402.stablecoin.xyz" */
   facilitatorUrl: string;
 
   /** Merchant wallet address that receives payments */

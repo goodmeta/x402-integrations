@@ -26,7 +26,7 @@ In your `zuplo.json` route, add the policy as an inbound handler:
           "export": "default",
           "module": "$import(./policies/x402-policy)",
           "options": {
-            "facilitatorUrl": "https://facilitator.stablecoin.xyz",
+            "facilitatorUrl": "https://x402.stablecoin.xyz",
             "payTo": "0xYourWalletAddress",
             "network": "eip155:8453",
             "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
