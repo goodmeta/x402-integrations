@@ -46,9 +46,8 @@ import { baseSepolia } from "viem/chains";
 // Configuration
 // ---------------------------------------------------------------------------
 
-/** The facilitator service URL. Default: live SBC facilitator. */
-const FACILITATOR_URL =
-  process.env.FACILITATOR_URL || "https://x402.stablecoin.xyz";
+/** The facilitator service URL. Default: Test facilitator. */
+const FACILITATOR_URL = process.env.FACILITATOR_URL || "https://x402-apify.goodmeta.co";
 
 /** CAIP-2 network identifier for Base Sepolia (testnet). */
 const NETWORK = "eip155:84532";
@@ -202,9 +201,7 @@ async function main() {
   //   chainId: 84532 (Sepolia) or 8453 (mainnet)
   //   verifyingContract: the USDC contract address
   //
-  // If any domain field is wrong, the signature will verify off-chain
-  // (our test will pass) but fail on-chain (settlement will revert).
-  // We caught this exact bug: Sepolia uses "USDC", mainnet uses "USD Coin".
+  // If any domain field is wrong, the signature will fail on-chain (settlement will revert).
   // =========================================================================
 
   console.log("Step 3: Sign ERC-2612 Permit (off-chain, free)");

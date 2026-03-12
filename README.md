@@ -4,22 +4,33 @@ Production-ready x402 payment integrations for API infrastructure.
 
 x402 is an HTTP-native payment protocol for AI agents. Instead of provisioning accounts and API keys, an agent hits an endpoint, receives a `402 Payment Required` with USDC payment instructions, signs a gasless permit, and retries with the signed payment. No human in the loop.
 
-This repo contains reference implementations and end-to-end tests.
-
 ## Integrations
 
-| Pattern | Stack | Status |
-|---------|-------|--------|
+| Integration | Stack | Status |
+|-------------|-------|--------|
+| [Apify Actor payment](./apify/) | TypeScript, viem, USDC on Base | Production-ready |
 | [Zuplo inbound policy](./zuplo/) | TypeScript, Cloudflare Workers | Production-ready |
-| [E2E payment tests](./e2e/) | TypeScript, viem | Production-ready |
 
-## Examples
+## Apify E2E Test
 
-| Example | API | Notes |
-|---------|-----|-------|
-| [Tavily search](./examples/tavily-search/) | Tavily Search API | Search gated by x402 |
-| [E2B sandbox](./examples/e2b-sandbox/) | E2B Sandbox API | Code execution gated by x402 |
-| [Exa search](./examples/exa-search/) | Exa Search API | Semantic search gated by x402 |
+Full Actor payment flow: check balance → sign permit → verify → Actor run → settle → on-chain tx.
+
+```bash
+cd apify/e2e && npm install
+PRIVATE_KEY=0x... FACILITATOR_URL=https://x402-apify.goodmeta.co npm run test:apify
+```
+
+**What Apify builds (server side):** just HTTP POSTs to `/verify` and `/settle`. No blockchain code needed — the facilitator handles all on-chain operations.
+
+**What the test simulates:** both sides (agent signing + server verifying/settling) so you can see the full flow end-to-end.
+
+## Zuplo Policy
+
+Drop-in inbound policy for API payment gating. 14 tests covering all edge cases.
+
+```bash
+cd zuplo && pnpm install && pnpm test
+```
 
 ## How x402 Works
 
@@ -35,26 +46,6 @@ Server ->  200 OK + run the job
 Server ->  POST /settle to facilitator (on-chain USDC transfer)
 ```
 
-The facilitator handles signature verification and on-chain settlement. You don't need to interact with the blockchain directly.
-
-## E2E Tests
-
-The `e2e/` directory contains integration tests that exercise the full payment flow against a live facilitator:
-
-- **`test-permit.ts`** — SBC token permit flow (Base Sepolia)
-- **`test-apify-actor-payment.ts`** — USDC Actor payment flow simulating the Apify integration pattern
-
-```bash
-cd e2e && npm install
-PRIVATE_KEY=0x... npm test           # SBC token
-PRIVATE_KEY=0x... npm run test:apify # USDC (Apify flow)
-```
-
-## Facilitators
-
-- [Coinbase x402 Facilitator](https://x402.org) — Base mainnet
-- [SBC Facilitator](https://x402.stablecoin.xyz) — Base + Solana + Radius (USDC + SBC)
-
 ## Token Domains (EIP-712)
 
 The ERC-2612 permit signature includes an EIP-712 domain. The `name` and `version` fields **must** match the on-chain token contract values:
@@ -63,9 +54,6 @@ The ERC-2612 permit signature includes an EIP-712 domain. The `name` and `versio
 |-------|---------|--------|-----------|
 | USDC | Base Mainnet (eip155:8453) | `USD Coin` | `2` |
 | USDC | Base Sepolia (eip155:84532) | `USDC` | `2` |
-| SBC | Base Mainnet / Sepolia | `Stable Coin` | `1` |
-
-Using the wrong domain name produces a valid-looking signature that fails on-chain.
 
 ## Built by
 
