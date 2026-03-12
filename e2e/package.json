@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "tsx test-permit.ts"
+    "test": "tsx test-permit.ts",
+    "test:apify": "tsx test-apify-actor-payment.ts"
   },
   "dependencies": {
     "viem": "^2.0.0",
