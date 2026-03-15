@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "test": "tsx test-permit.ts",
-    "test:apify": "tsx test-apify-actor-payment.ts"
+    "test:apify": "tsx test-apify-actor-payment.ts",
+    "test:upto": "tsx test-upto-payment.ts"
   },
   "dependencies": {
     "viem": "^2.0.0",
