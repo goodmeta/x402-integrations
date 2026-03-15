@@ -8,21 +8,23 @@ x402 is an HTTP-native payment protocol for AI agents. Instead of provisioning a
 
 | Integration | Stack | Status |
 |-------------|-------|--------|
-| [Apify Actor payment](./apify/) | TypeScript, viem, USDC on Base | Production-ready |
+| [Apify MCP middleware + E2E](./apify/) | TypeScript, MCP SDK, viem, USDC on Base | Reference implementation |
 | [Zuplo inbound policy](./zuplo/) | TypeScript, Cloudflare Workers | Production-ready |
 
-## Apify E2E Test
+## Apify
 
-Full Actor payment flow: check balance → sign permit → verify → Actor run → settle → on-chain tx.
+MCP tool-level payment middleware for `call-actor` with up-to scheme support. Includes exact and up-to E2E tests on Base Sepolia.
 
 ```bash
+# Middleware tests (no wallet, no chain, 2 seconds)
+cd apify && npm install && npx tsx test-mcp-middleware.ts
+
+# Up-to E2E on Base Sepolia (needs funded wallet)
 cd apify/e2e && npm install
-PRIVATE_KEY=0x... FACILITATOR_URL=https://x402-apify.goodmeta.co npm run test:apify
+PRIVATE_KEY=0x... npm run test:upto
 ```
 
-**What Apify builds (server side):** just HTTP POSTs to `/verify` and `/settle`. No blockchain code needed — the facilitator handles all on-chain operations.
-
-**What the test simulates:** both sides (agent signing + server verifying/settling) so you can see the full flow end-to-end.
+See [apify/README.md](./apify/README.md) for full details.
 
 ## Zuplo Policy
 
