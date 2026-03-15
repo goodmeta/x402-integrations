@@ -34,7 +34,7 @@ PRIVATE_KEY=0xYourKey npx tsx test-upto-payment.ts
 
 ### The middleware (`mcp-x402-middleware.ts`)
 
-Wraps any MCP tool handler with x402 payment. Two functions:
+Wraps any MCP tool handler with x402 payment. Two main functions:
 
 ```typescript
 import { createX402Middleware } from './mcp-x402-middleware';
@@ -138,8 +138,8 @@ Follows x402 MCP transport spec (`specs/transports-v2/mcp.md`):
 // Good Meta test facilitator (Base Sepolia)
 facilitatorUrl: 'https://x402-apify.goodmeta.co'
 
-// Coinbase (when they ship up-to)
-facilitatorUrl: 'https://x402-facilitator.cdp.coinbase.com'
+// Any other facilitator that supports up-to
+facilitatorUrl: 'https://your-facilitator.example.com'
 
 // Self-hosted
 facilitatorUrl: 'http://localhost:3001'
