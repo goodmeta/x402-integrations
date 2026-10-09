@@ -8,7 +8,7 @@
     "test:upto": "tsx test-upto-payment.ts"
   },
   "dependencies": {
-    "viem": "^2.0.0",
-    "tsx": "^4.0.0"
+    "viem": "^2.47.2",
+    "tsx": "^4.21.0"
   }
 }
