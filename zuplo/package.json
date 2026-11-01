@@ -20,12 +20,12 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@zuplo/runtime": "^6.0.0",
-    "typescript": "^5.4.0",
-    "vitest": "^2.0.0"
+    "@types/node": "22.19.12",
+    "@zuplo/runtime": "6.67.8",
+    "typescript": "5.9.3",
+    "vitest": "2.1.9"
   },
   "peerDependencies": {
-    "@zuplo/runtime": ">=6.0.0"
+    "@zuplo/runtime": "7.13.9"
   }
 }
