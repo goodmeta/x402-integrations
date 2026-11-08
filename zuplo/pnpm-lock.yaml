@@ -9,16 +9,16 @@ importers:
   .:
     devDependencies:
       '@types/node':
-        specifier: ^22.0.0
+        specifier: 22.19.12
         version: 22.19.12
       '@zuplo/runtime':
-        specifier: ^6.0.0
+        specifier: 6.67.8
         version: 6.67.8
       typescript:
-        specifier: ^5.4.0
+        specifier: 5.9.3
         version: 5.9.3
       vitest:
-        specifier: ^2.0.0
+        specifier: 2.1.9
         version: 2.1.9(@types/node@22.19.12)
 
 packages:
